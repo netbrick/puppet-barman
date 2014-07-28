@@ -73,8 +73,8 @@ define barman::server (
   validate_re($ensure, '^(present|absent)$', "${ensure} is not a valid value (ensure = present|absent).")
 
   # check if 'description' has been correctly configured
-  validate_re($name, '^[0-9a-z/]*$', "${name} is not a valid name. Please only use lowercase letters, numbers and slashes.")
-
+  validate_re($name, '^[0-9a-z\-/]*$', "${name} is not a valid name. Please only use lowercase letters, numbers, slashes and hyphens.")
+  
   if $custom_lines != '' {
     notice "The 'custom_lines' option is deprecated. Please use \$conf_template for custom configuration"
   }
