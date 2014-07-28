@@ -111,6 +111,22 @@ class barman (
     default  => 'directory',
   }
 
+  # Install repository
+  if $::osfamily == 'Debian' {
+    include apt
+
+    apt::source { 'apt-pgdg':
+      location    => 'http://apt.postgresql.org/pub/repos/apt/',
+      release     => "${::lsbdistcodename}-pgdg",
+      repos       => 'main',
+      key         => 'ACCC4CF8',
+      key_source  => 'http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc',
+      pin         => '500',
+    }
+
+    Apt::Source <| |> -> Package <| |>
+  }
+
   class { 'postgresql::globals':
     manage_package_repo => true,
   } ->

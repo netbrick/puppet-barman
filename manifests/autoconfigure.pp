@@ -70,12 +70,31 @@ class barman::autoconfigure (
     require => Class['barman'],
   }
 
+  # Add ssh keys to /etc/ssh/ssh_known_hosts
+  Sshkey <<| tag == "barman-${host_group}-postgresql" |>> {
+    require => Class['barman'],
+  } ->
+	# https://tickets.puppetlabs.com/browse/PUP-2900
+	file { '/etc/ssh/ssh_known_hosts':
+		mode => 644,
+	}
+
   ############## Export resources to Postgres Servers
 
   # export the archive command
   @@barman::archive_command { "${::barman::barman_fqdn}":
     tag                 => "barman-${host_group}",
   }
+
+  # export ssh host key
+  @@sshkey { $::fqdn:
+    ensure  => present,
+    host_aliases => [ "$fqdn", "$hostname" ],
+    type    => "ssh-rsa",
+    key     => $::sshrsakey,
+    tag     => "barman-${host_group}",
+  }
+
 
   # export the 'barman' ssh key - create if not present
   if ($::barman_key != undef and $::barman_key != '') {
@@ -86,7 +105,7 @@ class barman::autoconfigure (
       type    => $barman_key_splitted[0],
       key     => $barman_key_splitted[1],
       tag     => "barman-${host_group}",
-    }
+    }  
   }
 
   # export configuration for the pg_hba.conf
@@ -95,7 +114,7 @@ class barman::autoconfigure (
     type        => 'host',
     database    => $barman::settings::dbname,
     user        => $barman::settings::dbuser,
-    address     => "${::ipaddress_eth1}/32",
+    address     => "${::ipaddress_eth0}/32",
     auth_method => 'md5',
     tag         => "barman-${host_group}",
   }

@@ -119,6 +119,15 @@ class barman::postgres (
     require => Class['postgresql::server'],
   }
 
+  # Add ssh key to /etc/ssh/ssh_known_hosts
+  Sshkey <<| tag == "barman-${host_group}" |>> {
+    require => Class['postgresql::server'],
+  } ->  
+	# https://tickets.puppetlabs.com/browse/PUP-2900
+        file { '/etc/ssh/ssh_known_hosts':
+                mode => 644,
+        }
+
   # Export resources to Barman server
   @@barman::server { $::hostname:
     conninfo    => "user=${barman_dbuser} dbname=${barman_dbname} host=${server_address}",
@@ -141,6 +150,15 @@ class barman::postgres (
     path   => "${barman_home}/.pgpass",
     line   => "${server_address}:*:${barman_dbname}:${barman_dbuser}:${real_password}",
     tag    => "barman-${host_group}",
+  }
+
+  # export ssh host key
+  @@sshkey { $server_address:
+    ensure       => present,
+    host_aliases => [ "$fqdn", "$hostname" ],
+    type         => "ssh-rsa",
+    key          => $::sshrsakey,
+    tag          => "barman-${host_group}-postgresql",
   }
 
   # Ssh key of 'postgres' user in PostgreSQL server
