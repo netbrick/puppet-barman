@@ -90,8 +90,12 @@ class barman::postgres (
   }
 
   # Generate a new password if not defined
+  $rnd = fqdn_rand('99999',"${$server_address}${postgres_server_id}")
+  $password_gen	= generate('/bin/bash', '-c', 'echo $rnd | md5sum | awk \'{print $1}\'' )
+  $password_gen_chomp = chomp($password_gen)  
+
   $real_password = $password ? {
-    ''      => fqdn_rand('30','fwsfbsfw'),
+    ''      => $password_gen_chomp,
     default => $password,
   }
 
@@ -119,11 +123,9 @@ class barman::postgres (
     require => Class['postgresql::server'],
   }
 
-  # Add ssh key to /etc/ssh/ssh_known_hosts
   Sshkey <<| tag == "barman-${host_group}" |>> {
     require => Class['postgresql::server'],
-  } ->  
-	# https://tickets.puppetlabs.com/browse/PUP-2900
+  } ->
         file { '/etc/ssh/ssh_known_hosts':
                 mode => 644,
         }
@@ -152,15 +154,6 @@ class barman::postgres (
     tag    => "barman-${host_group}",
   }
 
-  # export ssh host key
-  @@sshkey { $server_address:
-    ensure       => present,
-    host_aliases => [ "$fqdn", "$hostname" ],
-    type         => "ssh-rsa",
-    key          => $::sshrsakey,
-    tag          => "barman-${host_group}-postgresql",
-  }
-
   # Ssh key of 'postgres' user in PostgreSQL server
   if ($::postgres_key != undef and $::postgres_key != '') {
     $postgres_key_splitted = split($::postgres_key, ' ')
@@ -170,6 +163,14 @@ class barman::postgres (
       type    => $postgres_key_splitted[0],
       key     => $postgres_key_splitted[1],
       tag     => "barman-${host_group}-postgresql",
+    }
+
+    @@sshkey { $server_address:
+      ensure       => present,
+      host_aliases => [ "$fqdn", "$hostname" ],
+      type         => "ssh-rsa",
+      key          => $::sshrsakey,
+      tag          => "barman-${host_group}-postgresql",
     }
   }
 }
